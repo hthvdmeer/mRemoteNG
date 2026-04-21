@@ -34,6 +34,10 @@ using mRemoteNG.UI.Controls;
 using mRemoteNG.Resources.Language;
 using System.Runtime.Versioning;
 using mRemoteNG.Config.Settings.Registry;
+using mRemoteNG.Container;
+using mRemoteNG.Tools.Cmdline;
+using mRemoteNG.Tree.Root;
+using System.Linq;
 using System.Threading; // ADDED
 #endregion
 
@@ -214,11 +218,14 @@ namespace mRemoteNG.UI.Forms
             MessageCollectorSetup.BuildMessageWritersFromSettings(_messageWriters);
 
             Startup.Instance.InitializeProgram(messageCollector);
+            Logger.Instance.Log?.Info("[FrmMain_Load] InitializeProgram done");
 
             SetMenuDependencies();
+            Logger.Instance.Log?.Info("[FrmMain_Load] SetMenuDependencies done");
 
             DockPanelLayoutLoader uiLoader = new(this, messageCollector);
             uiLoader.LoadPanelsFromXml();
+            Logger.Instance.Log?.Info("[FrmMain_Load] LoadPanelsFromXml done");
 
             LockToolbarPositions(Properties.Settings.Default.LockToolbars);
             Properties.Settings.Default.PropertyChanged += OnApplicationSettingChanged;
@@ -226,6 +233,7 @@ namespace mRemoteNG.UI.Forms
             _themeManager.ThemeChanged += ApplyTheme;
 
             _fpChainedWindowHandle = NativeMethods.SetClipboardViewer(Handle);
+            Logger.Instance.Log?.Info("[FrmMain_Load] SetClipboardViewer done");
 
             Runtime.WindowList = [];
 
@@ -233,21 +241,28 @@ namespace mRemoteNG.UI.Forms
                 SetDefaultLayout();
             else
                 SetLayout();
+            Logger.Instance.Log?.Info("[FrmMain_Load] SetLayout done");
 
             ShowHidePanelTabs();
 
             Runtime.ConnectionsService.ConnectionsLoaded += ConnectionsServiceOnConnectionsLoaded;
             Runtime.ConnectionsService.ConnectionsSaved += ConnectionsServiceOnConnectionsSaved;
-            
+
             // Close splash screen before loading connections to ensure password dialog appears on top
+            Logger.Instance.Log?.Info("[FrmMain_Load] closing splash screen");
             FrmSplashScreenNew splash = FrmSplashScreenNew.GetInstance();
             if (splash.Dispatcher.CheckAccess())
                 splash.Close();
             else
                 splash.Dispatcher.Invoke(() => splash.Close());
+            Logger.Instance.Log?.Info("[FrmMain_Load] splash closed");
 
             CredsAndConsSetup credsAndConsSetup = new();
+            Logger.Instance.Log?.Info("[FrmMain_Load] calling LoadCredsAndCons");
             credsAndConsSetup.LoadCredsAndCons();
+            Logger.Instance.Log?.Info("[FrmMain_Load] LoadCredsAndCons done");
+
+            HandleCommandLinePendingOperations(messageCollector);
 
             // Initialize panel binding for Connections and Config panels
             UI.Panels.PanelBinder.Instance.Initialize();
@@ -291,6 +306,74 @@ namespace mRemoteNG.UI.Forms
                 panelAdder.AddPanel(panelName);
         }
 
+        private void HandleCommandLinePendingOperations(MessageCollector messageCollector)
+        {
+            if (CommandLinePendingOperations.AddConnectionOnStartup != null)
+            {
+                try
+                {
+                    Connection.ConnectionInfo newConn = CommandLinePendingOperations.AddConnectionOnStartup;
+                    messageCollector.AddMessage(MessageClass.DebugMsg, $"CLI: adding connection '{newConn.Name}' to tree");
+                    ContainerInfo root = Runtime.ConnectionsService.ConnectionTreeModel?.RootNodes
+                        .OfType<RootNodeInfo>()
+                        .FirstOrDefault() as ContainerInfo;
+                    if (root != null)
+                    {
+                        root.AddChild(newConn);
+                        Runtime.ConnectionsService.SaveConnections();
+                        messageCollector.AddMessage(MessageClass.InformationMsg,
+                            $"CLI: connection '{newConn.Name}' ({newConn.Hostname}) added and saved");
+                    }
+                    else
+                    {
+                        messageCollector.AddMessage(MessageClass.WarningMsg, "CLI: could not find root node to add connection");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    messageCollector.AddExceptionMessage("CLI: failed to add connection", ex);
+                }
+                finally
+                {
+                    CommandLinePendingOperations.AddConnectionOnStartup = null;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(CommandLinePendingOperations.ConnectOnStartup))
+            {
+                string connectName = CommandLinePendingOperations.ConnectOnStartup;
+                CommandLinePendingOperations.ConnectOnStartup = null;
+                try
+                {
+                    messageCollector.AddMessage(MessageClass.DebugMsg, $"CLI: searching for connection '{connectName}'");
+                    Connection.ConnectionInfo target = Runtime.ConnectionsService.ConnectionTreeModel?
+                        .GetRecursiveChildList()
+                        .FirstOrDefault(c => c.Name.Equals(connectName, StringComparison.OrdinalIgnoreCase)
+                                          && c is not ContainerInfo);
+                    if (target != null)
+                    {
+                        messageCollector.AddMessage(MessageClass.InformationMsg, $"CLI: opening connection '{connectName}'");
+                        Runtime.ConnectionInitiator.OpenConnection(target);
+                    }
+                    else
+                    {
+                        messageCollector.AddMessage(MessageClass.WarningMsg, $"CLI: connection '{connectName}' not found");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    messageCollector.AddExceptionMessage($"CLI: failed to open connection '{connectName}'", ex);
+                }
+            }
+
+            if (CommandLinePendingOperations.CollapseOnStartup)
+            {
+                CommandLinePendingOperations.CollapseOnStartup = false;
+                AppWindows.TreeForm.ConnectionTree.CollapseAll();
+                AppWindows.TreeForm.ConnectionTree.Expand(AppWindows.TreeForm.ConnectionTree.GetRootConnectionNode());
+            }
+        }
+
         private void ApplyLanguage()
         {
             fileMenu.ApplyLanguage();
@@ -302,6 +385,12 @@ namespace mRemoteNG.UI.Forms
 
         private void OnApplicationSettingChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
         {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => OnApplicationSettingChanged(sender, propertyChangedEventArgs)));
+                return;
+            }
+
             switch (propertyChangedEventArgs.PropertyName)
             {
                 case nameof(Properties.Settings.LockToolbars):
@@ -414,6 +503,7 @@ namespace mRemoteNG.UI.Forms
         {
             if (!CommonRegistrySettings.AllowCheckForUpdates) return;
             if (!CommonRegistrySettings.AllowCheckForUpdatesAutomatical) return;
+            if (ProgramRoot.ConfigFileName != null) return;
 
             if (Properties.OptionsUpdatesPage.Default.CheckForUpdatesAsked) return;
 
@@ -732,6 +822,12 @@ namespace mRemoteNG.UI.Forms
 
             StringBuilder titleBuilder = new(Application.ProductName);
             const string separator = " - ";
+
+            if (ProgramRoot.ConfigFileName != null)
+            {
+                titleBuilder.Append(separator);
+                titleBuilder.Append(Path.GetFileNameWithoutExtension(ProgramRoot.ConfigFileName));
+            }
 
             if (Runtime.ConnectionsService.IsConnectionsFileLoaded)
             {

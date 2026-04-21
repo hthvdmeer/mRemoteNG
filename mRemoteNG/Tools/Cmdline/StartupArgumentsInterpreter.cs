@@ -5,6 +5,8 @@ using System.IO;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 using mRemoteNG.App.Info;
+using mRemoteNG.Connection;
+using mRemoteNG.Connection.Protocol;
 using mRemoteNG.Messages;
 using mRemoteNG.Properties;
 using mRemoteNG.Resources.Language;
@@ -39,6 +41,9 @@ namespace mRemoteNG.Tools.Cmdline
                 ParseResetToolbarArg(args);
                 ParseNoReconnectArg(args);
                 ParseCustomConnectionPathArg(args);
+                ParseConnectArg(args);
+                ParseAddConnectionArg(args);
+                ParseCollapseArg(args);
             }
             catch (Exception ex)
             {
@@ -80,6 +85,66 @@ namespace mRemoteNG.Tools.Cmdline
             _messageCollector.AddMessage(MessageClass.DebugMsg,
                                          "Cmdline arg: Disabling reconnection to previously connected hosts");
             Properties.OptionsAdvancedPage.Default.NoReconnect = true;
+        }
+
+        private void ParseConnectArg(CmdArgumentsInterpreter args)
+        {
+            string connectName = args["connect"] ?? args["cn"];
+            if (connectName == null) return;
+            _messageCollector.AddMessage(MessageClass.DebugMsg, $"Cmdline arg: will open connection '{connectName}' after startup");
+            CommandLinePendingOperations.ConnectOnStartup = connectName;
+        }
+
+        private void ParseAddConnectionArg(CmdArgumentsInterpreter args)
+        {
+            if (args["add-connection"] == null && args["addcon"] == null) return;
+
+            string name = args["name"];
+            string host = args["host"];
+            string protocolStr = args["protocol"] ?? args["proto"] ?? "RDP";
+            string username = args["username"] ?? args["user"] ?? "";
+            string password = args["password"] ?? args["pass"] ?? "";
+            string domain = args["domain"] ?? args["dom"] ?? "";
+            string portStr = args["port"];
+            string description = args["description"] ?? args["desc"] ?? "";
+
+            if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(host))
+            {
+                _messageCollector.AddMessage(MessageClass.WarningMsg,
+                    "Cmdline --add-connection requires --name and --host");
+                return;
+            }
+
+            _messageCollector.AddMessage(MessageClass.DebugMsg,
+                $"Cmdline arg: will add connection '{name}' ({host}) after startup");
+
+            ConnectionInfo newConnection = new()
+            {
+                Name = name,
+                Hostname = host,
+                Username = username,
+                Password = password,
+                Domain = domain,
+                Description = description,
+            };
+
+            if (Enum.TryParse(protocolStr, ignoreCase: true, out ProtocolType protocol))
+                newConnection.Protocol = protocol;
+            else
+                _messageCollector.AddMessage(MessageClass.WarningMsg,
+                    $"Cmdline --add-connection: unknown protocol '{protocolStr}', defaulting to RDP");
+
+            if (int.TryParse(portStr, out int port))
+                newConnection.Port = port;
+
+            CommandLinePendingOperations.AddConnectionOnStartup = newConnection;
+        }
+
+        private void ParseCollapseArg(CmdArgumentsInterpreter args)
+        {
+            if (args["collapse"] == null && args["cl"] == null) return;
+            _messageCollector.AddMessage(MessageClass.DebugMsg, "Cmdline arg: collapsing all folders on startup");
+            CommandLinePendingOperations.CollapseOnStartup = true;
         }
 
         private void ParseCustomConnectionPathArg(CmdArgumentsInterpreter args)

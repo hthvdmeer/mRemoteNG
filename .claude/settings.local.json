@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet restore *)",
+      "Bash(msbuild mRemoteNG.sln -p:Configuration=Release -p:Platform=x64 -m)",
+      "Bash(dotnet build *)",
+      "Read(//c/Program Files/Microsoft Visual Studio//**)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft Visual Studio//**)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/MSBuild.exe\" mRemoteNG.sln -p:Configuration=Release -p:Platform=x64 -m -nologo)",
+      "Bash(mysql --version)",
+      "Bash(mariadb --version)",
+      "Bash(winget search *)",
+      "Bash(powershell -Command \"[System.Web.Security.Membership]::GeneratePassword\\(20,4\\)\")",
+      "Bash(powershell -Command \"Add-Type -AssemblyName System.Web; [System.Web.Security.Membership]::GeneratePassword\\(20,4\\)\")",
+      "Bash(winget install *)",
+      "Bash(powershell -Command \"Start-Process msiexec -Wait -ArgumentList '/i','C:\\\\Users\\\\henk\\\\AppData\\\\Local\\\\Temp\\\\WinGet\\\\MariaDB.Server_12.2.2.0_x64__XFHHNMHK\\\\mariadb-12.2.2-winx64.msi','/qn','PASSWORD=AvcK6ik]600a&/w.lrPO' -Verb RunAs\")",
+      "Bash(sc query *)",
+      "Bash(powershell -Command \"Get-Service -Name 'MySQL*','MariaDB*' -ErrorAction SilentlyContinue | Select-Object Name,Status\")",
+      "Read(//c/Users/henk/AppData/Local/Temp/WinGet//**)",
+      "Bash(powershell -Command ' *)",
+      "Bash(powershell -Command \"Get-Service -Name 'MySQL*','MariaDB*' | Select-Object Name,Status,StartType\")",
+      "Bash(powershell -Command 'Get-Service | Where-Object { $_.Name -match '\\\\''sql|maria|mysql'\\\\'' } | Select-Object Name,Status,StartType')",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(powershell -Command \"Start-Process -FilePath 'C:\\\\Program Files\\\\MariaDB 12.2\\\\bin\\\\mysqld.exe' -ArgumentList '--install','MariaDB' -Verb RunAs -Wait\")",
+      "Bash(powershell -Command \"Get-Service MariaDB | Select-Object Name,Status,StartType\")",
+      "Bash(powershell -Command \"Start-Service MariaDB; Start-Sleep 2; \\(Get-Service MariaDB\\).Status\")",
+      "Bash(powershell -Command \"Start-Process powershell -Verb RunAs -ArgumentList '-Command','Start-Service MariaDB' -Wait\")",
+      "Bash(powershell -Command \"\\(Get-Service MariaDB\\).Status\")",
+      "Bash(\"/c/Program Files/MariaDB 12.2/bin/mysql.exe\" -u root \"-pAvcK6ik]600a&/w.lrPO\" -e \"SELECT VERSION\\(\\);\")"
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 ﻿using Microsoft.IdentityModel.Tokens;
-
+using System.Configuration;
 using mRemoteNG.App.Update;
 using mRemoteNG.Config.Settings;
 using mRemoteNG.UI.Forms;
@@ -28,6 +28,9 @@ namespace mRemoteNG.App
         private static System.Threading.Thread? _wpfSplashThread;
         private static FrmSplashScreenNew? _wpfSplash;
 
+        /// <summary>Set when --config/--cfg is used; contains just the filename (no path).</summary>
+        public static string? ConfigFileName { get; private set; }
+
         [STAThread]
         public static void Main(string[] args)
         {
@@ -45,6 +48,7 @@ namespace mRemoteNG.App
         private static Task MainAsync(string[] args)
         {
             AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+            ApplyConfigFileArg(args);
 
 #if !SELF_CONTAINED
             // Runtime checks only needed for framework-dependent deployments
@@ -95,6 +99,36 @@ namespace mRemoteNG.App
                 StartApplication();
 
             return Task.CompletedTask;
+        }
+
+        private static void ApplyConfigFileArg(string[] args)
+        {
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (!args[i].Equals("--config", StringComparison.OrdinalIgnoreCase) &&
+                    !args[i].Equals("--cfg", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string sourcePath = args[i + 1];
+                if (!File.Exists(sourcePath))
+                {
+                    MessageBox.Show($"Config file not found: {sourcePath}", "mRemoteNG", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                try
+                {
+                    string destPath = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.PerUserRoamingAndLocal).FilePath;
+                    Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+                    File.Copy(sourcePath, destPath, overwrite: true);
+                    ConfigFileName = Path.GetFileName(sourcePath);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not apply config file: {ex.Message}", "mRemoteNG", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Environment.Exit(1);
+                }
+                return;
+            }
         }
 
         // Assembly resolve handler

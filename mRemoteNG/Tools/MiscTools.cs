@@ -93,26 +93,12 @@ namespace mRemoteNG.Tools
 
 		public static Type DBTimeStampType()
 		{
-			switch (Properties.OptionsDBsPage.Default.SQLServerType)
-			{
-				case "mysql":
-					return typeof(MySqlDateTime);
-				case "mssql":
-				default:
-					return typeof(SqlDateTime);
-			}
+			return typeof(DateTime);
 		}
 
 		public static object DBTimeStampNow()
 		{
-			switch (Properties.OptionsDBsPage.Default.SQLServerType)
-			{
-				case "mysql":
-					return new MySqlDateTime(DateTime.Now.ToUniversalTime());
-				case "mssql":
-				default:
-					return DateTime.Now.ToUniversalTime();
-			}
+			return DateTime.Now.ToUniversalTime();
 		}
 
         public static string PrepareValueForDB(string Text)

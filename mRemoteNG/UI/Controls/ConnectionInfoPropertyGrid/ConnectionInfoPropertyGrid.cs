@@ -349,6 +349,8 @@ namespace mRemoteNG.UI.Controls.ConnectionInfoPropertyGrid {
             } else {
                 rootInfo.PasswordString = "";
             }
+
+            Runtime.ConnectionsService.SaveConnections();
         }
 
         private void UpdateInheritanceNode() {

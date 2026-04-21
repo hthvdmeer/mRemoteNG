@@ -25,14 +25,27 @@ namespace mRemoteNG.Config.Serializers.ConnectionSerializers.Sql
             try
             {
                 if (!databaseConnector.IsConnected)
-                    databaseConnector.Connect();
-
-                if (!DoesDbTableExist(databaseConnector, "tblRoot"))
                 {
-                    // database exists but is empty, initialize it with the schema
-                    InitializeDatabaseSchema(databaseConnector);
+                    Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "SqlDatabaseMetaDataRetriever: connecting to database");
+                    databaseConnector.Connect();
+                    Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "SqlDatabaseMetaDataRetriever: connected");
                 }
 
+                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "SqlDatabaseMetaDataRetriever: checking if tblRoot exists");
+                bool tblRootExists = DoesDbTableExist(databaseConnector, "tblRoot");
+                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, $"SqlDatabaseMetaDataRetriever: tblRoot exists = {tblRootExists}");
+                if (!tblRootExists)
+                {
+                    Runtime.MessageCollector.AddMessage(MessageClass.WarningMsg, "SqlDatabaseMetaDataRetriever: tblRoot not found — creating schema (existing data in tblCons/tblRoot will be dropped)", onlyLog: false);
+                    InitializeDatabaseSchema(databaseConnector);
+                    Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "SqlDatabaseMetaDataRetriever: schema initialized");
+                }
+                else
+                {
+                    MigrateSchema(databaseConnector);
+                }
+
+                Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "SqlDatabaseMetaDataRetriever: reading tblRoot metadata");
                 DbCommand dbCommand = databaseConnector.DbCommand("SELECT * FROM tblRoot");
                 dbDataReader = dbCommand.ExecuteReader();
                 if (!dbDataReader.HasRows)
@@ -124,6 +137,25 @@ namespace mRemoteNG.Config.Serializers.ConnectionSerializers.Sql
             }
         }
 
+        private void MigrateSchema(IDatabaseConnector databaseConnector)
+        {
+            if (databaseConnector.GetType() == typeof(MySqlDatabaseConnector))
+            {
+                string[] migrations =
+                [
+                    "ALTER TABLE tblCons ADD COLUMN IF NOT EXISTS EnvironmentTags varchar(4096) DEFAULT NULL",
+                    "ALTER TABLE tblCons ADD COLUMN IF NOT EXISTS InheritEnvironmentTags tinyint NOT NULL DEFAULT 0",
+                    "ALTER TABLE tblCons ADD COLUMN IF NOT EXISTS RDGatewayExternalCredentialProvider varchar(256) DEFAULT NULL",
+                    "ALTER TABLE tblCons ADD COLUMN IF NOT EXISTS RDGatewayUserViaAPI varchar(512) DEFAULT NULL",
+                ];
+                foreach (string sql in migrations)
+                {
+                    try { databaseConnector.DbCommand(sql).ExecuteNonQuery(); }
+                    catch (Exception ex) { Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg, $"MigrateSchema: {ex.Message}"); }
+                }
+            }
+        }
+
         private bool IsValidTableName(string tableName)
         {
             // Table names should only contain alphanumeric characters and underscores
@@ -147,8 +179,9 @@ namespace mRemoteNG.Config.Serializers.ConnectionSerializers.Sql
             try
             {
                 // ANSI SQL way.  Works in PostgreSQL, MSSQL, MySQL.
+                // Use LOWER() for case-insensitive match — Linux MariaDB stores table_name case-sensitively.
                 string database_name = Properties.OptionsDBsPage.Default.SQLDatabaseName;
-                DbCommand cmd = databaseConnector.DbCommand("select case when exists((select * from information_schema.tables where table_name = @TableName and table_schema = @DatabaseName)) then 1 else 0 end");
+                DbCommand cmd = databaseConnector.DbCommand("select case when exists((select * from information_schema.tables where LOWER(table_name) = LOWER(@TableName) and LOWER(table_schema) = LOWER(@DatabaseName))) then 1 else 0 end");
                 
                 DbParameter tableNameParam = cmd.CreateParameter();
                 tableNameParam.ParameterName = "@TableName";
@@ -462,7 +495,7 @@ CREATE TABLE `tblCons` (
     `RDGatewayUsername` varchar(512) DEFAULT NULL,
     `RDPAlertIdleTimeout` tinyint NOT NULL,
     `RDPAuthenticationLevel` varchar(32) NOT NULL,
-    `RDPMinutesToIdleTimeout` int(11) NOT NULL,
+    `RDPMinutesToIdleTimeout` int NOT NULL,
     `RdpVersion` varchar(10) DEFAULT NULL,
     `RedirectAudioCapture` tinyint NOT NULL,
     `RedirectClipboard` tinyint NOT NULL,
@@ -580,6 +613,10 @@ CREATE TABLE `tblCons` (
     `ExternalCredentialProvider` varchar(256) DEFAULT NULL,
     `ExternalAddressProvider` varchar(256) DEFAULT NULL,
     `UserViaAPI` varchar(512) NOT NULL,
+    `EnvironmentTags` varchar(4096) DEFAULT NULL,
+    `InheritEnvironmentTags` tinyint NOT NULL DEFAULT 0,
+    `RDGatewayExternalCredentialProvider` varchar(256) DEFAULT NULL,
+    `RDGatewayUserViaAPI` varchar(512) DEFAULT NULL,
     PRIMARY KEY (`ConstantID`),
     UNIQUE KEY `ID_UNIQUE` (`ID`),
     UNIQUE KEY `ConstantID_UNIQUE` (`ConstantID`)
@@ -630,8 +667,10 @@ CREATE TABLE `tblUpdate` (
                 throw new Exception("Unknown database backend");
             }
 
+            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "SqlDatabaseMetaDataRetriever: executing schema SQL");
             DbCommand cmd = databaseConnector.DbCommand(sql);
             cmd.ExecuteNonQuery();
+            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "SqlDatabaseMetaDataRetriever: schema SQL executed");
         }
         
     }

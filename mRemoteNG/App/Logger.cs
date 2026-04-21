@@ -39,7 +39,8 @@ namespace mRemoteNG.App
         {
             ILoggerRepository repository = LogManager.GetRepository("mRemoteNG");
 
-            XmlConfigurator.Configure(repository, new FileInfo("log4net.config"));
+            string log4netConfigPath = Path.Combine(Application.StartupPath, "log4net.config");
+            XmlConfigurator.Configure(repository, new FileInfo(log4netConfigPath));
 
             IAppender[] appenders = repository.GetAppenders();
 

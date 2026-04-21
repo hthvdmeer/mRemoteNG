@@ -132,7 +132,9 @@ namespace mRemoteNG.Connection
                 ? (IConnectionsLoader)new SqlConnectionsLoader(_localConnectionPropertiesSerializer, _localConnectionPropertiesDataProvider)
                 : new XmlConnectionsLoader(connectionFileName);
 
+            Logger.Instance.Log?.Info($"[ConnectionsService.LoadConnections] calling {connectionLoader.GetType().Name}.Load()");
             ConnectionTreeModel newConnectionTreeModel = connectionLoader.Load();
+            Logger.Instance.Log?.Info("[ConnectionsService.LoadConnections] Load() returned");
 
             if (useDatabase)
                 LastSqlUpdate = DateTime.Now.ToUniversalTime();

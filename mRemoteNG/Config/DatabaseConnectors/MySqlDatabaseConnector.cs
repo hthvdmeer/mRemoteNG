@@ -1,6 +1,8 @@
 ﻿using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
+using mRemoteNG.App;
+using mRemoteNG.Messages;
 using MySql.Data.MySqlClient;
 
 // ReSharper disable ArrangeAccessorOwnerBody
@@ -49,17 +51,21 @@ namespace mRemoteNG.Config.DatabaseConnectors
 
         private void BuildSqlConnectionString()
         {
-            _dbConnectionString = $"server={_dbHost};user={_dbUsername};database={_dbName};port={_dbPort};password={_dbPassword};";
+            _dbConnectionString = $"server={_dbHost};user={_dbUsername};database={_dbName};port={_dbPort};password={_dbPassword};AllowBatch=True;SslMode=Preferred;";
         }
         
         public void Connect()
         {
+            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, $"MySqlDatabaseConnector: opening connection to {_dbHost}:{_dbPort}/{_dbName}");
             _dbConnection.Open();
+            Runtime.MessageCollector.AddMessage(MessageClass.InformationMsg, "MySqlDatabaseConnector: connection opened");
         }
 
         public async Task ConnectAsync()
         {
+            Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg, $"MySqlDatabaseConnector: opening async connection to {_dbHost}:{_dbPort}/{_dbName}");
             await _dbConnection.OpenAsync();
+            Runtime.MessageCollector.AddMessage(MessageClass.DebugMsg, "MySqlDatabaseConnector: async connection opened");
         }
 
         public void Disconnect()
