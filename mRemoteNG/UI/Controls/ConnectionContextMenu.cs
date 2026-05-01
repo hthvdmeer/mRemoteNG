@@ -45,6 +45,7 @@ namespace mRemoteNG.UI.Controls
         private ToolStripMenuItem _cMenTreeRename;
         private ToolStripMenuItem _cMenTreeDelete;
         private ToolStripMenuItem _cMenTreeCopyHostname;
+        private ToolStripMenuItem _cMenTreeCopyPassword;
         private ToolStripSeparator _cMenTreeSep4;
         private ToolStripMenuItem _cMenTreeMoveUp;
         private ToolStripMenuItem _cMenTreeMoveDown;
@@ -104,6 +105,7 @@ namespace mRemoteNG.UI.Controls
             _cMenTreeRename = new ToolStripMenuItem();
             _cMenTreeDelete = new ToolStripMenuItem();
             _cMenTreeCopyHostname = new ToolStripMenuItem();
+            _cMenTreeCopyPassword = new ToolStripMenuItem();
             _cMenTreeSep3 = new ToolStripSeparator();
             _cMenTreeImport = new ToolStripMenuItem();
             _cMenTreeImportFile = new ToolStripMenuItem();
@@ -144,6 +146,7 @@ namespace mRemoteNG.UI.Controls
                 _cMenTreeRename,
                 _cMenTreeDelete,
                 _cMenTreeCopyHostname,
+                _cMenTreeCopyPassword,
                 _cMenInheritanceSubMenu,
                 _cMenTreeSep3,
                 _cMenTreeImport,
@@ -297,6 +300,13 @@ namespace mRemoteNG.UI.Controls
             _cMenTreeCopyHostname.Size = new System.Drawing.Size(199, 22);
             _cMenTreeCopyHostname.Text = "Copy Hostname";
             _cMenTreeCopyHostname.Click += OnCopyHostnameClicked;
+            //
+            // cMenTreeCopyPassword
+            //
+            _cMenTreeCopyPassword.Name = "_cMenTreeCopyPassword";
+            _cMenTreeCopyPassword.Size = new System.Drawing.Size(199, 22);
+            _cMenTreeCopyPassword.Text = "Copy Password";
+            _cMenTreeCopyPassword.Click += OnCopyPasswordClicked;
             //
             // cMenTreeSep3
             //
@@ -573,6 +583,7 @@ namespace mRemoteNG.UI.Controls
             _cMenTreeConnectWithOptionsViewOnly.Enabled = false;
             _cMenTreeApplyInheritanceToChildren.Enabled = false;
             _cMenTreeApplyDefaultInheritance.Enabled = false;
+            _cMenTreeCopyPassword.Enabled = false;
         }
 
         internal void ShowHideMenuItemsForContainer(ContainerInfo containerInfo)
@@ -585,6 +596,7 @@ namespace mRemoteNG.UI.Controls
 
             _cMenTreeToolsTransferFile.Enabled = false;
             _cMenTreeConnectWithOptionsViewOnly.Enabled = false;
+            _cMenTreeCopyPassword.Enabled = false;
         }
 
         internal void ShowHideMenuItemsForPuttyNode(PuttySessionInfo connectionInfo)
@@ -889,6 +901,13 @@ namespace mRemoteNG.UI.Controls
         private void OnCopyHostnameClicked(object sender, EventArgs e)
         {
             _connectionTree.CopyHostnameSelectedNode(new WindowsClipboard());
+        }
+
+        private void OnCopyPasswordClicked(object sender, EventArgs e)
+        {
+            string password = _connectionTree.SelectedNode?.Password;
+            if (string.IsNullOrEmpty(password)) return;
+            new WindowsClipboard().SetText(password);
         }
 
         private void OnImportFileClicked(object sender, EventArgs e)
