@@ -34,27 +34,35 @@ namespace mRemoteNG.Config.Settings
         }
 
 
+        private static string ExtAppsPath =>
+            Path.Combine(
+                ProgramRoot.ConfigFileDirectory ?? SettingsFileInfo.SettingsPath,
+                SettingsFileInfo.ExtAppsFilesName);
+
         public void LoadExternalAppsFromXML()
         {
-#if !PORTABLE
-            string oldPath =
- Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), GeneralAppInfo.ProductName, SettingsFileInfo.ExtAppsFilesName);
-#endif
-            string newPath = Path.Combine(SettingsFileInfo.SettingsPath, SettingsFileInfo.ExtAppsFilesName);
+            string extAppsPath = ExtAppsPath;
             XmlDocument xDom;
-            if (File.Exists(newPath))
+            if (File.Exists(extAppsPath))
             {
-                _messageCollector.AddMessage(MessageClass.InformationMsg, $"Loading External Apps from: {newPath}",
-                                             true);
-                xDom = SecureXmlHelper.LoadXmlFromFile(newPath);
+                _messageCollector.AddMessage(MessageClass.InformationMsg, $"Loading External Apps from: {extAppsPath}", true);
+                xDom = SecureXmlHelper.LoadXmlFromFile(extAppsPath);
             }
 #if !PORTABLE
-			else if (File.Exists(oldPath))
-			{
-                _messageCollector.AddMessage(MessageClass.InformationMsg, $"Loading External Apps from: {oldPath}", true);
-                xDom = SecureXmlHelper.LoadXmlFromFile(oldPath);
-
-			}
+            else if (ProgramRoot.ConfigFileDirectory == null)
+            {
+                string oldPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), GeneralAppInfo.ProductName, SettingsFileInfo.ExtAppsFilesName);
+                if (File.Exists(oldPath))
+                {
+                    _messageCollector.AddMessage(MessageClass.InformationMsg, $"Loading External Apps from: {oldPath}", true);
+                    xDom = SecureXmlHelper.LoadXmlFromFile(oldPath);
+                }
+                else
+                {
+                    _messageCollector.AddMessage(MessageClass.WarningMsg, "Loading External Apps failed: Could not FIND file!");
+                    return;
+                }
+            }
 #endif
             else
             {

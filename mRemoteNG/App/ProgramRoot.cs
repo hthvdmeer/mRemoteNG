@@ -31,6 +31,9 @@ namespace mRemoteNG.App
         /// <summary>Set when --config/--cfg is used; contains just the filename (no path).</summary>
         public static string? ConfigFileName { get; private set; }
 
+        /// <summary>Set when --config/--cfg is used; contains the directory of the source config file.</summary>
+        public static string? ConfigFileDirectory { get; private set; }
+
         [STAThread]
         public static void Main(string[] args)
         {
@@ -121,6 +124,7 @@ namespace mRemoteNG.App
                     Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
                     File.Copy(sourcePath, destPath, overwrite: true);
                     ConfigFileName = Path.GetFileName(sourcePath);
+                    ConfigFileDirectory = Path.GetDirectoryName(Path.GetFullPath(sourcePath));
                 }
                 catch (Exception ex)
                 {

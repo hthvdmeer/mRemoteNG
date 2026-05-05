@@ -2,7 +2,8 @@
   "profiles": {
     "mRemoteNG": {
       "commandName": "Project",
-      "commandLineArgs": "--config \"C:\\Users\\henk\\AppData\\Local\\Profi-KOM_Ltd\\mRemoteNG_Url_glhht3ehkxvbhqcpxulc130klbqb1rbt\\1.78.2.3489\\user.nas.config\" -cl"
+      "commandLineArgs": "--config \"C:\\Users\\henk\\SynologyDrive\\Tools\\user.nas.test.config\" -cl",
+      "commandLineArgs2": "--config \"C:\\Users\\henk\\AppData\\Local\\Profi-KOM_Ltd\\mRemoteNG_Url_glhht3ehkxvbhqcpxulc130klbqb1rbt\\1.78.2.3489\\user.nas.config\" -cl"
     }
   }
 }
